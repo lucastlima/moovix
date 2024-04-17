@@ -1,60 +1,67 @@
-"use client";
-
 import { ApiConfig } from "@/service/models/ApiConfig";
 import { Movie } from "@/service/models/MoviesResponse";
+import { TvShow } from "@/service/models/TvShowsResponse";
 import { getMediaUrl } from "@/utils";
-import { log } from "console";
-import {
-  motion,
-  useAnimationFrame,
-  useMotionValue,
-  useTransform,
-  wrap,
-} from "framer-motion";
 import Image from "next/image";
 
-type MediaCarroselProps = {
-  media?: Movie[];
+type MediaCarouselProps<T extends Movie | TvShow> = {
+  media?: T[];
   config: ApiConfig;
 };
 
-export function MediaCarousel({ media = [], config }: MediaCarroselProps) {
-  const duplicatedItems = [...media, ...media];
+export function MediaCarousel<T extends Movie | TvShow>({
+  media = [],
+  config,
+}: MediaCarouselProps<T>) {
+  return (
+    <div className="flex w-full relative">
+      <div className="absolute z-20 top-0 left-0 h-full flex p-4 text-2xl items-center">
+        <span className="flex justify-center items-center w-8 h-8 bg-white text-black rounded-[50%] cursor-pointer">
+          {"<"}
+        </span>
+      </div>
+      <div className="flex flex-1 overflow-hidden px-4 carousel-mask">
+        <div className="flex gap-4">
+          {media.map((item) => {
+            const title = (item as Movie).title || (item as TvShow).name;
 
-  const baseX = useMotionValue(0);
-
-  const x = useTransform(baseX, (v) => `-${v % 50}%`);
-
-  useAnimationFrame((_, delta) => {
-    let moveBy = 1 * (delta / 1000);
-    baseX.set(baseX.get() + moveBy);
-  });
-
-  const renderMedia = () => {
-    return (
-      <motion.div className="flex gap-2" style={{ x }}>
-        {duplicatedItems.map((item, idx) => {
-          return (
-            <motion.div key={item.id + idx} className="flex relative">
-              <motion.div className="flex w-[200px]">
+            return (
+              <div key={item.id} className="flex relative w-[200px] ">
                 <Image
                   width={384}
                   height={576}
                   src={getMediaUrl(config, item.poster_path, 4)}
-                  alt={item.title}
+                  className="rounded-md"
+                  alt={title}
                 />
-              </motion.div>
-              <motion.div className="flex flex-col justify-end absolute w-full h-full z-10 p-2">
-                <h3>{item.title}</h3>
-              </motion.div>
-            </motion.div>
-          );
-        })}
-      </motion.div>
-    );
-  };
-
-  return (
-    <motion.div className="flex overflow-hidden">{renderMedia()}</motion.div>
+                <div className="flex gap-2 bg-black bg-opacity-80 flex-col justify-end absolute w-full h-full z-10 p-2 opacity-0 hover:opacity-100 transition-opacity duration-300">
+                  <h3 className="font-bold">{title}</h3>
+                  <p className="flex text-sm max-h-[50%] overflow-hidden">
+                    {truncateText(item.overview)}
+                  </p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+      <div className="absolute z-20 top-0 right-0 h-full flex p-4 text-2xl items-center">
+        <span className="flex justify-center items-center w-8 h-8 bg-white text-black rounded-[50%] cursor-pointer">
+          {">"}
+        </span>
+      </div>
+    </div>
   );
+}
+
+// helper methos to simulate the elipsis effect text. Limit the text to a certain number of characters
+
+function truncateText(text: string, limit: number = 150) {
+  // avoid adding ... if the text is shorter than the limit or ends with a period
+  const slice = text.slice(0, limit).trim();
+  let dots = "...";
+  if (text.length <= limit || slice.endsWith(".")) {
+    dots = "";
+  }
+  return text.length > limit ? `${slice}${dots}` : text;
 }
